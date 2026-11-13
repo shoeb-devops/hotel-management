@@ -1,20 +1,12 @@
 /** @type {import('next').NextConfig} */
+const isProd = process.env.NODE_ENV === "production";
+
 const nextConfig = {
+  output: "export",
+  basePath: isProd ? "/hotel-management" : "",
+  assetPrefix: isProd ? "/hotel-management/" : "",
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-      },
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-    ],
+    unoptimized: true,
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
