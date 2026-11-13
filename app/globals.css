@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 20% 97%;
+    --foreground: 0 0% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 18%;
+    --primary: 220 46% 20%;
+    --primary-foreground: 40 24% 96%;
+    --secondary: 40 38% 56%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 30 10% 93%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 40 38% 56%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 350 89% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 10% 88%;
+    --input: 30 10% 88%;
+    --ring: 220 46% 20%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 220 30% 8%;
+    --foreground: 30 20% 95%;
+    --card: 220 25% 12%;
+    --card-foreground: 30 20% 95%;
+    --popover: 220 25% 12%;
+    --popover-foreground: 30 20% 95%;
+    --primary: 40 38% 56%;
+    --primary-foreground: 220 46% 10%;
+    --secondary: 220 30% 25%;
+    --secondary-foreground: 30 20% 95%;
+    --muted: 220 25% 18%;
+    --muted-foreground: 30 10% 60%;
+    --accent: 40 38% 56%;
+    --accent-foreground: 220 46% 10%;
+    --destructive: 350 89% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 40 38% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+@layer components {
+  /* Premium Glass Morphism Card */
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-lg;
+  }
+
+  .dark .glass-card {
+    @apply bg-gray-900/70 border-gray-700/30;
+  }
+
+  /* Gold Gradient Button */
+  .btn-gold {
+    @apply bg-gradient-to-r from-hotel-gold to-hotel-gold-light text-white font-semibold
+           hover:from-hotel-gold-dark hover:to-hotel-gold transition-all duration-300
+           shadow-md hover:shadow-lg active:scale-[0.98];
+  }
+
+  /* Navy Button */
+  .btn-navy {
+    @apply bg-hotel-navy text-white font-semibold
+           hover:bg-hotel-navy-light transition-all duration-300
+           shadow-md hover:shadow-lg active:scale-[0.98];
+  }
+
+  /* Premium Section */
+  .section-padding {
+    @apply py-16 md:py-24 px-4 md:px-8;
+  }
+
+  /* Text Gradient */
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-hotel-gold via-hotel-gold-light to-hotel-gold bg-clip-text text-transparent;
+  }
+
+  /* Divider with diamond */
+  .divider-diamond {
+    @apply flex items-center gap-4;
+  }
+
+  .divider-diamond::before,
+  .divider-diamond::after {
+    content: "";
+    @apply flex-1 h-px bg-hotel-gold/30;
+  }
+
+  /* Loading Skeleton */
+  .skeleton {
+    @apply animate-pulse bg-muted rounded-md;
+  }
+
+  /* Status badge */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  /* Scrollbar styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-hotel-navy/20 rounded-full hover:bg-hotel-navy/40;
+  }
+}
+
+@layer utilities {
+  /* Smooth page transitions */
+  .page-enter {
+    animation: pageEnter 0.5s ease-out;
+  }
+
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Hero gradient overlay */
+  .hero-gradient {
+    background: linear-gradient(
+      to bottom,
+      rgba(27, 42, 74, 0.7) 0%,
+      rgba(27, 42, 74, 0.4) 50%,
+      rgba(27, 42, 74, 0.8) 100%
+    );
+  }
+
+  /* Subtle hover lift */
+  .hover-lift {
+    @apply transition-transform duration-300 hover:-translate-y-1;
+  }
+}

@@ -1,0 +1,625 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTH & USER MODELS
+// ============================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  hashedPassword String?
+  phone          String?
+  role           UserRole  @default(GUEST)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  guest    Guest?
+  staff    Staff?
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  FRONT_DESK
+  HOUSEKEEPING
+  ACCOUNTANT
+  RESTAURANT
+  GUEST
+}
+
+// ============================================
+// HOTEL & PROPERTY
+// ============================================
+
+model Hotel {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  starRating  Int      @default(3) // 1-5
+  address     String
+  city        String
+  state       String?
+  country     String   @default("Bangladesh")
+  zipCode     String?
+  phone       String
+  email       String
+  website     String?
+  latitude    Float?
+  longitude   Float?
+  checkInTime String   @default("14:00")  // 2:00 PM
+  checkOutTime String  @default("12:00")  // 12:00 PM
+  logo        String?
+  coverImage  String?
+  images      String[] // Array of image URLs
+  amenities   String[] // Hotel-level amenities
+  policies    Json?    // Cancellation, pet, smoking policies
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roomTypes       RoomType[]
+  rooms           Room[]
+  staff           Staff[]
+  bookings        Booking[]
+  seasonalPricing SeasonalPricing[]
+  coupons         Coupon[]
+  reviews         Review[]
+
+  @@index([slug])
+  @@index([city])
+  @@index([starRating])
+}
+
+// ============================================
+// ROOM MANAGEMENT
+// ============================================
+
+model RoomType {
+  id            String   @id @default(cuid())
+  hotelId       String
+  name          String   // Standard, Deluxe, Suite, Presidential
+  slug          String
+  description   String?  @db.Text
+  basePrice     Decimal  @db.Decimal(10, 2)
+  maxOccupancy  Int      @default(2)
+  maxAdults     Int      @default(2)
+  maxChildren   Int      @default(1)
+  bedType       String   @default("Double") // Single, Double, Queen, King, Twin
+  roomSize      Int?     // in sqft
+  images        String[]
+  amenities     String[] // WiFi, AC, TV, Mini-bar, Balcony, etc.
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  hotel           Hotel             @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  rooms           Room[]
+  seasonalPricing SeasonalPricing[]
+
+  @@unique([hotelId, slug])
+  @@index([hotelId])
+}
+
+model Room {
+  id         String     @id @default(cuid())
+  hotelId    String
+  roomTypeId String
+  roomNumber String
+  floor      Int        @default(1)
+  status     RoomStatus @default(AVAILABLE)
+  notes      String?    @db.Text
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  hotel            Hotel              @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  roomType         RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  bookings         Booking[]
+  housekeepingTasks HousekeepingTask[]
+
+  @@unique([hotelId, roomNumber])
+  @@index([hotelId, status])
+  @@index([roomTypeId])
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  MAINTENANCE
+  HOUSEKEEPING
+  OUT_OF_ORDER
+}
+
+// ============================================
+// GUEST MANAGEMENT
+// ============================================
+
+model Guest {
+  id            String      @id @default(cuid())
+  userId        String?     @unique
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String
+  alternatePhone String?
+  dateOfBirth   DateTime?
+  gender        Gender?
+  nationality   String      @default("Bangladeshi")
+  nidNumber     String?     // National ID
+  passportNumber String?
+  nidImage      String?     // Uploaded NID image
+  passportImage String?     // Uploaded passport image
+  address       String?
+  city          String?
+  country       String?     @default("Bangladesh")
+  vipStatus     VipStatus   @default(REGULAR)
+  loyaltyPoints Int         @default(0)
+  isBlacklisted Boolean     @default(false)
+  blacklistReason String?
+  notes         String?     @db.Text
+  totalStays    Int         @default(0)
+  totalSpent    Decimal     @default(0) @db.Decimal(12, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user     User?     @relation(fields: [userId], references: [id])
+  bookings Booking[]
+  reviews  Review[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([nidNumber])
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum VipStatus {
+  REGULAR
+  SILVER
+  GOLD
+  PLATINUM
+  VIP
+}
+
+// ============================================
+// BOOKING / RESERVATION
+// ============================================
+
+model Booking {
+  id              String        @id @default(cuid())
+  bookingNumber   String        @unique // Auto-generated: STY-20241113-001
+  hotelId         String
+  roomId          String?
+  guestId         String
+  checkIn         DateTime
+  checkOut        DateTime
+  nights          Int
+  adults          Int           @default(1)
+  children        Int           @default(0)
+  status          BookingStatus @default(PENDING)
+  source          BookingSource @default(WEBSITE)
+  roomRate        Decimal       @db.Decimal(10, 2)
+  subtotal        Decimal       @db.Decimal(10, 2)
+  taxAmount       Decimal       @default(0) @db.Decimal(10, 2)
+  serviceCharge   Decimal       @default(0) @db.Decimal(10, 2)
+  discountAmount  Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  paidAmount      Decimal       @default(0) @db.Decimal(10, 2)
+  dueAmount       Decimal       @default(0) @db.Decimal(10, 2)
+  couponId        String?
+  specialRequests String?       @db.Text
+  internalNotes   String?       @db.Text
+  checkedInAt     DateTime?
+  checkedOutAt    DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  hotel    Hotel     @relation(fields: [hotelId], references: [id])
+  room     Room?     @relation(fields: [roomId], references: [id])
+  guest    Guest     @relation(fields: [guestId], references: [id])
+  coupon   Coupon?   @relation(fields: [couponId], references: [id])
+  payments Payment[]
+  invoices Invoice[]
+  addons   BookingAddon[]
+  folioItems FolioItem[]
+
+  @@index([hotelId, status])
+  @@index([guestId])
+  @@index([checkIn, checkOut])
+  @@index([bookingNumber])
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+  WAITLISTED
+}
+
+enum BookingSource {
+  WEBSITE
+  WALK_IN
+  PHONE
+  EMAIL
+  OTA_BOOKING_COM
+  OTA_AGODA
+  OTA_EXPEDIA
+  CORPORATE
+  AGENT
+}
+
+model BookingAddon {
+  id        String  @id @default(cuid())
+  bookingId String
+  name      String  // Breakfast, Airport Pickup, Spa, etc.
+  quantity  Int     @default(1)
+  unitPrice Decimal @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+// ============================================
+// BILLING & PAYMENTS
+// ============================================
+
+model FolioItem {
+  id          String   @id @default(cuid())
+  bookingId   String
+  description String
+  category    String   // ROOM, FOOD, MINIBAR, LAUNDRY, SPA, MISC
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  total       Decimal  @db.Decimal(10, 2)
+  date        DateTime @default(now())
+  addedBy     String?  // Staff ID who added
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String
+  amount        Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?       // Payment gateway transaction ID
+  gateway       String?       // stripe, sslcommerz, cash
+  gatewayResponse Json?       // Raw response from payment gateway
+  notes         String?
+  paidAt        DateTime?
+  refundedAt    DateTime?
+  refundAmount  Decimal?      @db.Decimal(10, 2)
+  processedBy   String?       // Staff ID
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([status])
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  BKASH
+  NAGAD
+  ROCKET
+  BANK_TRANSFER
+  STRIPE
+  SSLCOMMERZ
+  CHECK
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  CANCELLED
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique // INV-20241113-001
+  bookingId     String
+  subtotal      Decimal  @db.Decimal(10, 2)
+  taxAmount     Decimal  @db.Decimal(10, 2)
+  serviceCharge Decimal  @db.Decimal(10, 2)
+  discount      Decimal  @default(0) @db.Decimal(10, 2)
+  totalAmount   Decimal  @db.Decimal(10, 2)
+  status        InvoiceStatus @default(DRAFT)
+  issuedAt      DateTime @default(now())
+  dueDate       DateTime?
+  paidAt        DateTime?
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([invoiceNumber])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+// ============================================
+// PRICING & PROMOTIONS
+// ============================================
+
+model SeasonalPricing {
+  id         String   @id @default(cuid())
+  hotelId    String
+  roomTypeId String
+  name       String   // Peak Season, Off Season, Eid Special, etc.
+  startDate  DateTime
+  endDate    DateTime
+  price      Decimal  @db.Decimal(10, 2)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  hotel    Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  roomType RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId, roomTypeId])
+  @@index([startDate, endDate])
+}
+
+model Coupon {
+  id            String     @id @default(cuid())
+  hotelId       String
+  code          String
+  description   String?
+  discountType  DiscountType @default(PERCENTAGE)
+  discountValue Decimal    @db.Decimal(10, 2)
+  maxDiscount   Decimal?   @db.Decimal(10, 2) // Max discount cap for percentage
+  minBookingAmount Decimal? @db.Decimal(10, 2)
+  usageLimit    Int?       // Max total uses
+  usedCount     Int        @default(0)
+  validFrom     DateTime
+  validUntil    DateTime
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+
+  hotel    Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@unique([hotelId, code])
+  @@index([code])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+// ============================================
+// STAFF & HOUSEKEEPING
+// ============================================
+
+model Staff {
+  id          String    @id @default(cuid())
+  userId      String?   @unique
+  hotelId     String
+  employeeId  String    // EMP-001
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String
+  role        StaffRole
+  department  String?
+  salary      Decimal?  @db.Decimal(10, 2)
+  joinDate    DateTime  @default(now())
+  isActive    Boolean   @default(true)
+  avatar      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user              User?              @relation(fields: [userId], references: [id])
+  hotel             Hotel              @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  housekeepingTasks HousekeepingTask[]
+  shifts            StaffShift[]
+
+  @@unique([hotelId, employeeId])
+  @@index([hotelId])
+}
+
+enum StaffRole {
+  GENERAL_MANAGER
+  FRONT_DESK_MANAGER
+  FRONT_DESK_AGENT
+  HOUSEKEEPING_MANAGER
+  HOUSEKEEPER
+  ACCOUNTANT
+  RESTAURANT_MANAGER
+  CHEF
+  WAITER
+  BELLBOY
+  SECURITY
+  MAINTENANCE
+  IT_SUPPORT
+}
+
+model StaffShift {
+  id        String   @id @default(cuid())
+  staffId   String
+  date      DateTime
+  startTime String   // "08:00"
+  endTime   String   // "16:00"
+  shiftType String   // MORNING, EVENING, NIGHT
+  status    String   @default("SCHEDULED") // SCHEDULED, COMPLETED, ABSENT
+  notes     String?
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, date])
+}
+
+model HousekeepingTask {
+  id          String              @id @default(cuid())
+  roomId      String
+  assignedToId String?
+  taskType    HousekeepingType    @default(ROUTINE_CLEAN)
+  status      HousekeepingStatus  @default(PENDING)
+  priority    TaskPriority        @default(NORMAL)
+  checklist   Json?               // Array of checklist items
+  notes       String?             @db.Text
+  scheduledAt DateTime            @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  room       Room   @relation(fields: [roomId], references: [id])
+  assignedTo Staff? @relation(fields: [assignedToId], references: [id])
+
+  @@index([roomId])
+  @@index([assignedToId])
+  @@index([status])
+}
+
+enum HousekeepingType {
+  ROUTINE_CLEAN
+  DEEP_CLEAN
+  TURNOVER
+  INSPECTION
+  MAINTENANCE
+}
+
+enum HousekeepingStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+  ISSUE_REPORTED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ============================================
+// REVIEWS & FEEDBACK
+// ============================================
+
+model Review {
+  id          String   @id @default(cuid())
+  hotelId     String
+  guestId     String
+  rating      Int      // 1-5
+  title       String?
+  comment     String?  @db.Text
+  response    String?  @db.Text // Hotel's response
+  isPublished Boolean  @default(true)
+  stayDate    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  guest Guest @relation(fields: [guestId], references: [id])
+
+  @@index([hotelId])
+  @@index([guestId])
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String   // CREATE, UPDATE, DELETE, LOGIN, etc.
+  entity     String   // booking, room, guest, etc.
+  entityId   String?
+  details    Json?    // Changed fields
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
